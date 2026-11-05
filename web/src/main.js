@@ -1,7 +1,9 @@
 import './style.css';
+import { workflowPage, mountWorkflow, unmountWorkflow } from './workflow.js';
 import { guides, sources, rules, checklist, flows } from './data.js';
 
 const paths = {
+  nodes: '<rect x="2" y="3" width="7" height="6" rx="2"/><rect x="15" y="15" width="7" height="6" rx="2"/><path d="M9 6h7a3 3 0 0 1 3 3v6M5 9v6a3 3 0 0 0 3 3h7"/>',
   book: '<path d="M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-2H4z"/><path d="M13 7a3 3 0 0 1 3-3h4v15h-4a4 4 0 0 0-3 2"/>',
   route: '<circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 5h8a4 4 0 0 1 0 8H9a4 4 0 0 0 0 8h4"/>',
   check: '<path d="m8 12 3 3 5-6"/><rect x="3" y="3" width="18" height="18" rx="5"/>',
@@ -33,7 +35,7 @@ const storageKey = 'blog-note-guide:v1';
 let stored = {}, storageAvailable = true;
 try { stored = JSON.parse(localStorage.getItem(storageKey) || '{}') || {}; } catch { storageAvailable = false; }
 const state = {
-  route: ['guide','analysis','checklist','sources'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'guide',
+  route: ['guide','analysis','workflow','checklist','sources'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'guide',
   category: '전체', query: '', ruleQuery: '', ruleFilter: '전체',
   checks: Object.fromEntries(checklist.map(item => [item.id, stored.checks?.[item.id] === true])),
   note: typeof stored.note === 'string' ? stored.note.slice(0, 3000) : '',
@@ -41,6 +43,7 @@ const state = {
 const nav = [
   { id: 'guide', icon: 'book', label: '운영 가이드' },
   { id: 'analysis', icon: 'route', label: '프로그램 로직' },
+  { id: 'workflow', icon: 'nodes', label: '노드 흐름도' },
   { id: 'checklist', icon: 'check', label: '발행 전 점검' },
   { id: 'sources', icon: 'file', label: '근거와 출처' },
 ];
@@ -72,6 +75,7 @@ function illustration() {
   </svg><span class="art-caption">하나씩, 내 방식대로.</span></div>`;
 }
 function renderShell() {
+  unmountWorkflow();
   document.querySelector('#app').innerHTML = `
     <aside class="sidebar">
       <a href="#guide" class="brand" aria-label="블로그 노트 홈"><span class="brand-mark">b<span>.</span></span><span>블로그 노트</span></a>
@@ -80,9 +84,10 @@ function renderShell() {
       <div class="sidebar-bottom"><div class="small-logo">${icon('spark')} 직접 운영하는 힘</div><p>복잡한 자동화 조건을<br>나만의 운영 습관으로.</p><a href="#sources">v4.53 분석 노트 ${icon('chevron')}</a></div>
     </aside>
     <div class="workspace"><header class="topbar"><span class="desktop-top-label">MY BLOG NOTE <span class="top-divider"></span> ${nav.find(n => n.id === state.route).label}</span><a href="#guide" class="mobile-brand">블로그 노트<span>.</span></a><div class="top-actions"><span class="updated"><i></i> 2026.11.04 기준</span><button class="download-btn" data-action="download" aria-label="운영 노트 다운로드">${icon('download')}<span>노트 저장</span></button></div></header>
-    <main id="main-content" tabindex="-1">${({guide:guidePage, analysis:analysisPage, checklist:checklistPage, sources:sourcesPage}[state.route])()}</main>
+    <main id="main-content" tabindex="-1">${({guide:guidePage, analysis:analysisPage, workflow:workflowPage, checklist:checklistPage, sources:sourcesPage}[state.route])()}</main>
     <footer class="footer"><span>블로그 노트</span><p>프로그램 분석과 공식 도움말을 바탕으로 정리한 개인 운영 가이드예요.</p><span>네이버·토스의 공식 서비스가 아닙니다.</span></footer></div>
     <nav class="mobile-nav" aria-label="모바일 주 메뉴">${nav.map(n=>`<a href="#${n.id}" ${state.route === n.id ? 'aria-current="page"' : ''} class="${state.route === n.id ? 'active' : ''}">${icon(n.icon)}<span>${n.label}</span></a>`).join('')}</nav>`;
+  if (state.route === 'workflow') mountWorkflow();
 }
 function guidePage() {
   return `<section class="hero"><div class="hero-content"><span class="eyebrow">내 손으로 키우는 블로그</span><h1>블로그 운영,<br><em>기준을 알면</em> 쉬워져요.</h1><p>이웃을 맺는 순간부터 글을 발행하기까지.<br>꼭 알아야 할 조건을 한곳에 모았어요.</p><a href="#checklist" class="primary-btn">오늘의 운영 점검하기 ${icon('arrow')}</a></div>${illustration()}</section>
@@ -104,6 +109,7 @@ function quickCheck() {
 }
 function analysisPage() {
   return `<div class="page-heading"><span class="eyebrow">실행 파일에서 확인했어요</span><h1>프로그램은<br class="mobile-break"> 이렇게 움직여요</h1><p>블로그 올인원 v4.53의 주요 흐름과 조건을 쉽게 풀었어요.</p></div>
+    <a href="#workflow" class="wf-analysis-link"><div><strong>n8n처럼, 노드로 실제 흐름을 따라가 보세요</strong><p>전체 흐름과 기능별 분기 · 노드를 누르면 조건과 근거 확인</p></div><span>↗</span></a>
     <div class="analysis-summary"><div><span>분석 대상</span><strong>v4.53 <small>Windows 실행 파일</small></strong></div><div><span>핵심 기능</span><strong>3가지 <small>소통 중심의 흐름</small></strong></div><div><span>정리한 조건</span><strong>12개 <small>근거와 한계 포함</small></strong></div></div>
     <section class="section-space"><div class="section-heading"><h2>핵심은 세 가지 소통이에요</h2><span class="subtle-label">단계를 눌러 자세히 보기</span></div><div class="flow-grid">${flows.map(f=>`<button class="flow-card" data-flow="${f.number}"><span class="step-no">STEP ${f.number}</span><span class="icon-tile blue">${icon(f.icon)}</span><h3>${f.title}</h3><p>${f.description}</p><span class="text-link">자세히 보기 ${icon('arrow')}</span></button>`).join('')}</div><p class="section-note">설정에 따라 기능을 켜고 끄며 순환합니다. 목표량·실행 시간·오류·제한 감지에 따라 멈추는 구조입니다.</p></section>
     <button class="finding-banner" data-rule="P04">${icon('info')}<span><strong>“24시간 이내”라는 설명, 코드는 조금 달랐어요.</strong><span>실제 시간 계산이 아닌 화면의 글자 형태를 확인해요. 분석 내용 보기</span></span>${icon('chevron')}</button>
